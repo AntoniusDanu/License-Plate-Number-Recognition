@@ -1,17 +1,14 @@
-# Gunakan image Python dengan OpenCV & Torch
-FROM python:3.9
+# Gunakan Python 3.10 sebagai base image
+FROM python:3.10
 
-# Set work directory
+# Set working directory
 WORKDIR /app
 
-# Copy semua file ke container
-COPY . /app
+# Copy semua file ke dalam container
+COPY . .
 
-# Install dependencies
+# Install semua dependensi
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Expose port (sesuai framework)
-EXPOSE 8000
-
-# Jalankan aplikasi
-CMD ["python", "app.py"]
+# Jalankan aplikasi FastAPI
+CMD ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "8000"]
