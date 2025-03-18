@@ -1,12 +1,11 @@
 from fastapi import FastAPI, File, UploadFile
+from fastapi.staticfiles import StaticFiles
 import cv2
 import numpy as np
-import torch
-from paddleocr import PaddleOCR
-from ultralytics import YOLO
-import uvicorn
 import os
 import shutil
+from paddleocr import PaddleOCR
+from ultralytics import YOLO
 from util import preprocess_image, correct_plate, filter_plate_text, draw_boxes
 
 # Inisialisasi FastAPI
@@ -16,6 +15,12 @@ app = FastAPI()
 MODEL_PATH = "yolov8_model/best.pt"
 model = YOLO(MODEL_PATH)
 ocr = PaddleOCR(lang="en")
+
+# Pastikan folder 'statics' ada untuk menyimpan hasil
+os.makedirs("statics", exist_ok=True)
+
+# Mount folder statics untuk mengakses gambar hasil deteksi
+app.mount("/statics", StaticFiles(directory="statics"), name="statics")
 
 @app.post("/predict/")
 async def predict_plate(file: UploadFile = File(...)):
@@ -53,10 +58,19 @@ async def predict_plate(file: UploadFile = File(...)):
             for bbox, text in filtered_texts:
                 formatted_text = correct_plate(text)
                 detected_plates.append(formatted_text)
-    
-    os.remove(temp_path)  # Hapus file sementara
-    return {"detected_plates": detected_plates}
 
-# Jalankan server
+    # Simpan hasil deteksi dengan bounding box
+    result_image_path = f"statics/detected_{file.filename}"
+    draw_boxes(temp_path, result_image_path, detected_plates)
+
+    os.remove(temp_path)  # Hapus file sementara
+
+    return {
+        "detected_plates": detected_plates,
+        "image_url": f"/statics/detected_{file.filename}"
+    }
+
+# Jalankan server jika script ini dieksekusi langsung
 if __name__ == "__main__":
+    import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)
